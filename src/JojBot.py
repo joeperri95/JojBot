@@ -52,8 +52,8 @@ async def octagon(context):
 @client.event
 async def on_ready():
     with open(os.getcwd() + "/res/GameList.txt", "r") as gamelistfile:
-    gamelist = gamelistfile.read().split('\n');
-        gamechoice = random.choice(gamelist)
+        gamelist = gamelistfile.read().split('\n');
+    gamechoice = random.choice(gamelist)
     await client.change_presence(game=Game(name=gamechoice))
     print('Logged in as ' + client.user.name)
 
