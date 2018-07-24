@@ -1,8 +1,10 @@
-#JojBot discord chatbot
+#JojBot discord bot
 
 BOT_PREFIX = '!'
 
-import secrets
+#not for you
+import secret
+
 import discord
 from discord import Game
 from discord.ext.commands import Bot
@@ -19,8 +21,8 @@ client = Bot(command_prefix=BOT_PREFIX)
                 brief = "Gives an answer to a question",
                 pass_context=True)
 async def eight_ball(context):
-    with open("8BallList.txt", r) as fp:
-      possible_responses = fp.readlines()    
+    with open("res/8BallList.txt", 'r') as fp:
+        possible_responses = fp.read().split('\n')
     possible_responses = [x.strip() for x in possible_responses]
     await client.say(random.choice(possible_responses) +
                      " " + context.message.author.mention)
@@ -41,15 +43,20 @@ async def meme(context):
     
     await client.send_file(context.message.channel,meme)
 
+@client.command(name="octagon", description = "Time to octagon", pass_context = True)
+async def octagon(context):
+    with open('res/OctagonList.txt' , 'r') as fp:
+        videos = fp.read().split('\n')
+    await client.say(random.choice(videos))
+
 @client.event
 async def on_ready():
-    gamelistfile = open(os.getcwd() + "/res/GameList.txt", "r")
+    with open(os.getcwd() + "/res/GameList.txt", "r") as gamelistfile:
     gamelist = gamelistfile.read().split('\n');
-    gamechoice = random.choice(gamelist)
+        gamechoice = random.choice(gamelist)
     await client.change_presence(game=Game(name=gamechoice))
     print('Logged in as ' + client.user.name)
-    gamelistfile.close()
 
-client.run(TOKEN)
+client.run(secret.TOKEN)
 
 
