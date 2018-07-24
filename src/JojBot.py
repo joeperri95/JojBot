@@ -11,6 +11,7 @@ from discord.ext.commands import Bot
 import random
 import os
 import requests
+import queue
 
 #change to root directory
 os.chdir("..")
@@ -36,6 +37,12 @@ async def bitcoin():
      value = response.json()['bpi']['USD']['rate']
      await client.say("Bitcoin price is " + value)
 
+@client.command(name = "music", pass_context = True)
+async def music(context, link):
+    pass
+    
+    
+
 @client.command(name="meme", description = "Get a random meme image", brief = "Grab a dank meme" , pass_context=True)
 async def meme(context):
     memeList = os.listdir(os.getcwd() + "/res/Memes")
@@ -43,7 +50,7 @@ async def meme(context):
     
     await client.send_file(context.message.channel,meme)
 
-@client.command(name="octagon", description = "Time to octagon", pass_context = True)
+@client.command(name="octagon", description = "Time to octagon", brief = "Get a funny video from the net", pass_context = True)
 async def octagon(context):
     with open('res/OctagonList.txt' , 'r') as fp:
         videos = fp.read().split('\n')
@@ -55,7 +62,8 @@ async def on_ready():
         gamelist = gamelistfile.read().split('\n');
     gamechoice = random.choice(gamelist)
     await client.change_presence(game=Game(name=gamechoice))
-    print('Logged in as ' + client.user.name)
+    await client.send_message(discord.Object('342738319819407370') , "Guess who's back")
+    print('Logged in as ' + client.user.name)    
 
 client.run(secret.TOKEN)
 
