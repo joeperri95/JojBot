@@ -13,39 +13,44 @@ from discord.ext.commands import Bot
 import random
 import os
 import queue
+import asyncio
+
+client = Bot(command_prefix=BOT_PREFIX)
 
 class bot:
-	def __init__(self):
-		self.connected = False
-		self.connection = None
-		self.musicQueue = queue.Queue()
-		self.currentPlayer = None
+    def __init__(self, client):
+        self.connected = False
+        self.connection = None
+        self.musicQueue = queue.Queue()
+        self.currentPlayer = None
 
-	def vc_connect(self, channel):
-		if(self.isConnected()):
-			return
-		else:
-			self.connected = True
-			self.connection = channel
+    def vc_connect(self, channel):
+        if(self.isConnected()):
+            return
+        else:
+            self.connected = True
+            self.connection = channel
 
-	def vc_disconnect(self):
-		self.connected = False
-		self.connection = None
+    def vc_disconnect(self):
+        self.connected = False
+        #self.connection = None
 
-	def enqueue(self, player):
-		#handle input 
-		self.musicQueue.put(player)
+    def enqueue(self, player):
+        #handle input 
+        self.musicQueue.put(player)
 
-	def dequeue(self):
-		return self.musicQueue.get()
+    def dequeue(self):
+        return self.musicQueue.get()
 
-	def isConnected(self):
-		return self.connected
+    def isConnected(self):
+        return self.connected
 
-	def playNext(self):
-		player = self.musicQueue.get()
-		player.play()
-
+    def playNext(self):
+                if(self.musicQueue.empty()):
+                        return
+                else:
+                        player = self.musicQueue.get()
+                        player.start()
 
 b = bot()
 
@@ -53,7 +58,7 @@ b = bot()
 #change to root directory
 os.chdir("..")
 
-client = Bot(command_prefix=BOT_PREFIX)
+
 
 @client.command(name='8ball', description = "Answer a yes/no question",
                 brief = "Gives an answer to a question",
@@ -91,23 +96,28 @@ async def octagon(context):
 async def mus(context):
   channel = context.message.author.voice_channel
   if(channel is None):
-  	await client.say("Enter a voice channel dummy " + context.message.author.mention)
-  	return
+    await client.say("Enter a voice channel dummy " + context.message.author.mention)
+    return
   else:
-  	pass
+    pass
 
   if(b.isConnected()):
-  	link = context.message.content.strip('!mus ')
-  	player = await b.connection.create_ytdl_player(link, after = lambda: b.playNext())
-  	b.enqueue(player)
-  	await client.say("I enqueued it b")
-  	pass
+    link = context.message.content.strip('!mus ')
+    b.enqueue(await b.connection.create_ytdl_player(link, after = lambda: b.playNext()))
+    await client.say("I enqueued it b")
+    pass
   
   else:
-  	b.vc_connect(await client.join_voice_channel(channel))
-  	link = context.message.content.strip('!mus ')
-  	b.enqueue(await b.connection.create_ytdl_player(link, after = lambda: b.playNext()))
-  	b.dequeue().start()
+    b.vc_connect(await client.join_voice_channel(channel))
+    link = context.message.content.strip('!mus ')
+    b.enqueue(await b.connection.create_ytdl_player(link, after = lambda: b.playNext()))
+    b.playNext()
+
+
+@client.command(name = "vkick", pass_context = True)
+async def vkick(context):
+        if(b.connection):
+                await b.connection.disconnect() 
 
 @client.event
 async def on_ready():
