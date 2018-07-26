@@ -1,2 +1,12 @@
+
+#do not include compiled/nonsource files
+*.pyc
+*.pyo
+*.o
+/src/__pycache__
+
+#contains bot token
 /src/secret.py
+
+#private
 /res/Memes/*
