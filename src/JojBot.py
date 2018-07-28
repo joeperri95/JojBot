@@ -1,8 +1,4 @@
-#run.py
-
-#JojBot discord bot
-
-BOT_PREFIX = '!'
+#JojBot.py
 
 #not for you
 import secret
@@ -14,17 +10,23 @@ import random
 import datetime
 import os
 import sys
+import time
 import queue
 import asyncio
 import youtube_dl
 
+BOT_PREFIX = '!'
 DEBUG = "DEBUG" in [x.upper for x in sys.argv]
+
+#for the time being
+DEBUG = True
 
 client = Bot(command_prefix=BOT_PREFIX)
 
+#may not be necessary
 ydl_opts = {
     'noplaylist' : True,
-    'prefer_ffmpeg' : False
+    'prefer_ffmpeg' : True
 }
 
 class bot:
@@ -47,8 +49,11 @@ class bot:
 
     def enqueue(self, player):
         #handle input
-        self.musicQueue.append(player)
-
+        if(self.currentPlayer is None and not self.musicQueue):
+            self.musicQueue.append(player)
+            self.playNext()
+        else:
+            self.musicQueue.append(player)
 
     def dequeue(self):
         return self.musicQueue.pop(0)
@@ -57,15 +62,20 @@ class bot:
         return self.connected
 
     def playNext(self):
+
+        #if the queue is empty stop the last song
         if(not self.musicQueue):
             if(self.currentPlayer):
                 self.currentPlayer.stop()
                 self.currentPlayer = None
+                print("Queue completed")
             return
         else:
             if(self.currentPlayer):
                 self.currentPlayer.stop()
-            self.currentPlayer = self.musicQueue.pop(0)
+                self.currentPlayer = None
+            self.currentPlayer = self.dequeue()
+            print("Playing: {}".format(self.currentPlayer.title))
             self.currentPlayer.start()
 
     def listQueue(self):
@@ -77,6 +87,29 @@ b = bot()
 #change to root directory
 os.chdir("..")
 
+
+#Commands to be used only for debugging
+if(DEBUG):
+
+    #kick jojbot from the voice channel
+    @client.command(name = "vkick", brief = "this is for debugging", pass_context = True)
+    async def vkick(context):
+	        if(b.connection):
+	                await b.connection.disconnect()
+	                b.vc_disconnect()
+
+    #testing the built in stream players
+    @client.command(name = "pt", pass_context = True)
+    async def pt(context):
+        channel = context.message.author.voice_channel
+        b = await client.join_voice_channel(channel)
+        link = context.message.content.strip('!pt ')
+        player = await b.create_ytdl_player(link)
+        return player.start()
+
+
+#8 ball command will give a response to a yes or no question
+#from a tutorial may remove
 @client.command(name='8ball', description = "Answer a yes/no question",
                 brief = "Gives an answer to a question",
                 pass_context=True)
@@ -87,6 +120,9 @@ async def eight_ball(context):
     await client.say(random.choice(possible_responses) +
                      " " + context.message.author.mention)
 
+#give current bitcoin price
+#from a tutorial may remove
+#also may modify for arbitrary stock and create a nice embed
 @client.command(name='bitcoin',
                 description = "Get current price of bitcoin in USD",
                 brief = "Get current price of bitcoin in USD")
@@ -96,6 +132,8 @@ async def bitcoin():
      value = response.json()['bpi']['USD']['rate']
      await client.say("Bitcoin price is " + value)
 
+#post random image from meme folder
+#should work on categories accessible from subcommands
 @client.command(name="meme", description = "Get a random meme image", brief = "Grab a dank meme" , pass_context=True)
 async def meme(context):
     memeList = os.listdir(os.getcwd() + "/res/Memes")
@@ -103,29 +141,41 @@ async def meme(context):
 
     await client.send_file(context.message.channel,meme)
 
+#post youtube link from a list of videos about jack black
+#need to use youtube api instead of this method
+#youtube_dl allows for playlist use could look into that
+#expand to more than this category perhaps do all kinds of MAD videos
 @client.command(name="octagon", description = "Time to octagon", brief = "Get a funny video from the net", pass_context = True)
 async def octagon(context):
     with open('res/OctagonList.txt' , 'r') as fp:
         videos = fp.read().split('\n')
     await client.say(random.choice(videos))
 
-@client.command(name = "mus", pass_context = True)
+#play music from youtube link
+#this is the most important feature
+@client.command(name = "mus", brief = "Play a youtube link", pass_context = True)
 async def mus(context):
   channel = context.message.author.voice_channel
+
+  #kindly notify the user to join a voice channel
   if(channel is None):
     await client.say("Enter a voice channel dummy " + context.message.author.mention)
     return
   else:
     pass
 
-  #handle input
-
+  #need to handle input
   if(client.is_voice_connected(context.message.server)):
     link = context.message.content.strip('!mus ')
     try:
       player = await b.connection.create_ytdl_player(link, ytdl_options = ydl_opts, after = lambda: b.playNext())
       b.enqueue(player)
-      await client.say(str(player.title) + " added to the queue")
+
+      if(DEBUG):
+          print("added to the queue".format(str(player.title)))
+      else:
+          await client.say("{} added to the queue".format(str(player.title)))
+
     except CommandInvokeError:
       await client.say("That's not a valid link dawg")
 
@@ -133,23 +183,22 @@ async def mus(context):
     b.vc_connect(await client.join_voice_channel(channel))
     link = context.message.content.strip('!mus ')
     b.enqueue(await b.connection.create_ytdl_player(link, ytdl_options=ydl_opts, after = lambda: b.playNext()))
-    b.playNext()
+    print("voice connected ")
 
 @client.command(name = "skip", brief = "next song", pass_context = True)
 async def skip(context):
     if(not b.musicQueue):
+        b.playNext()
         await client.say("Queue is empty")
     else:
+        #need to implement an emoji instead of text here
         await client.say("DansGame")
-        b.playNext()
+        print("{} skipped".format(b.currentPlayer.title))
+        b.currentPlayer.stop()
+        #b.playNext()
 
-if(DEBUG):
-	@client.command(name = "vkick", brief = "this is for debugging", pass_context = True)
-	async def vkick(context):
-	        if(b.connection):
-	                await b.connection.disconnect()
-	                b.vc_disconnect()
-
+#list the contents of the music queue
+#need to make the embed nicer
 @client.command(name = 'qlist', pass_context = True)
 async def qlist(context):
     queueList = b.listQueue()
@@ -157,7 +206,7 @@ async def qlist(context):
 
     i = 1
     for x in queueList:
-        em.add_field(name = i, value = x)
+        em.add_field(name = i, value = x, inline = False)
         i += 1
 
     await client.say("", embed = em)
@@ -168,10 +217,13 @@ async def on_ready():
         gamelist = gamelistfile.read().split('\n');
     gamechoice = random.choice(gamelist)
     await client.change_presence(game=Game(name=gamechoice))
+
+    #dont post welcome message while in debug mode
     if(not DEBUG):
 	    for server in client.servers:
 	        for channel in server.channels:
 	            if str(channel.type) == 'text':
+                    #post welcome message in the main text channel
 	                if channel.permissions_for(server.me).send_messages:
 	                    if(datetime.date.today().weekday() == 2):
 	                        await client.send_message(channel, "It is wednesday my dudes")
